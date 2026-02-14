@@ -40,6 +40,8 @@ lunar.Populate({
     MaleficGrasp = lunar.Spell(103103, {
         damage = "magic",
         category = "attack",
+        channel = true,
+        stupidChannel = true,
     }),
 
     DrainSoul = lunar.Spell(1120, {

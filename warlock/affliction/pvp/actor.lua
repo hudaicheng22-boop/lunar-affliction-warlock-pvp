@@ -64,12 +64,6 @@ actor:Init(function()
     -- Guide: "Shadowfury = startup switch for ALL chains"
     -- ========================================================
 
-    -- 3a: Shadowfury initiates — proactive chain start on healer
-    spells.Shadowfury("initiate")
-
-    -- 3b: Shadowfury counter — break enemy CC chains
-    spells.Shadowfury("counter")
-
     -- 3c: Fear CC target (healer) — UA-protected
     spells.Fear("cc_target")
 
@@ -87,7 +81,6 @@ actor:Init(function()
 
     -- 3h: Peel abilities (self-defense)
     spells.HowlOfTerror("peel")
-    spells.Shadowfury("peel")
     spells.MortalCoil("peel")
     spells.BloodHorror("activate")
 
