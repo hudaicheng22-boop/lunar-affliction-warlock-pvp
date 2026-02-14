@@ -70,7 +70,7 @@ end)
 spells.SoulSwap:Callback("inhale", function(spell)
     if not util.should() then return end
     if util.hasSoulburn() then return end
-    if util.hasSoulSwapExhale() then return end
+    if util.hasSoulSwapInhale() then return end
     if not target.enemy then return end
 
     -- Only inhale if target has strong snapshotted DoTs
@@ -83,7 +83,7 @@ end)
 --- Soul Swap Exhale: Spread snapshotted DoTs to other targets
 spells.SoulSwap:Callback("exhale", function(spell)
     if not util.should() then return end
-    if not util.hasSoulSwapExhale() then return end
+    if not util.hasSoulSwapInhale() then return end
     if not settings.warlock_multi_dot then return end
 
     local maxTargets = settings.warlock_max_dot_targets or 3
@@ -129,35 +129,50 @@ end)
 -- ============================================================
 
 --- Agony - Highest priority, must never fall off
+--- Sim logic: refresh when remaining <= GCD duration (very tight)
 spells.Agony:Callback("maintain", function(spell)
     if not util.should() then return end
     if not target.enemy then return end
+    if util.hasSoulSwapInhale() then return end  -- Don't overwrite with weaker dots
 
     local remains = target.debuffRemains(auras.AGONY, player)
-    -- Pandemic: refresh when < 30% of duration remaining (~7.2s for 24s Agony)
-    if remains > 5.4 then return end
+    if remains > lunar.gcd then return end  -- Tight refresh: only at GCD remaining
 
     return spell:Cast(target)
 end)
 
 --- Corruption - Must maintain for Soul Shard generation
+--- Sim logic: refresh < 3s, or < 6s during Dark Soul
 spells.Corruption:Callback("maintain", function(spell)
     if not util.should() then return end
     if not target.enemy then return end
+    if util.hasSoulSwapInhale() then return end
 
     local remains = target.debuffRemains(auras.CORRUPTION, player)
-    if remains > 4.2 then return end
+    local threshold = 3
+    -- Refresh earlier during Dark Soul to lock in snapshot
+    if util.hasSnapshotWindow() then threshold = 6 end
+    if remains > threshold then return end
 
     return spell:Cast(target)
 end)
 
 --- Unstable Affliction - Core damage + dispel protection
+--- Sim logic: refresh < 3s, or complex conditions with Dark Soul
 spells.UnstableAffliction:Callback("maintain", function(spell)
     if not util.should() then return end
     if not target.enemy then return end
+    if util.hasSoulSwapInhale() then return end
 
     local remains = target.debuffRemains(auras.UNSTABLE_AFFLICTION, player)
-    if remains > 4.2 then return end
+    local threshold = 3
+    -- During Dark Soul with Lightweave, refresh earlier to snapshot
+    if util.hasSnapshotWindow() and player.buff(auras.LIGHTWEAVE) then
+        if player.buffRemains(auras.LIGHTWEAVE) < 3 then
+            threshold = 11  -- Refresh before Lightweave falls off
+        end
+    end
+    if remains > threshold then return end
 
     return spell:Cast(target)
 end)
@@ -278,6 +293,49 @@ end)
 -- ============================================================
 -- Filler: Malefic Grasp / Drain Soul
 -- ============================================================
+
+-- ============================================================
+-- Doomguard (DPS Cooldown)
+-- ============================================================
+
+spells.SummonDoomguard:Callback("burst", function(spell)
+    if not util.should() then return end
+    if not target.enemy then return end
+
+    -- Use in execute phase or with Dark Soul + procs
+    local shouldUse = false
+    if target.hpliteral < 25 and util.hasProc() then shouldUse = true end
+    if target.hpliteral < 20 then shouldUse = true end
+    if util.hasSnapshotWindow() and util.hasProc() then shouldUse = true end
+
+    if not shouldUse then return end
+
+    return spell:Cast() and lunar.alert("Doomguard!", spell.id)
+end)
+
+-- ============================================================
+-- Drain Soul for Shard Generation (from sims)
+-- ============================================================
+
+--- Drain Soul to generate shards before SBSS window
+spells.DrainSoul:Callback("shard_gen", function(spell)
+    if not util.should() then return end
+    if not target.enemy then return end
+    if player.soulShards >= 3 then return end
+
+    -- Generate shards when we need SBSS and buffs are up
+    if not util.hasSnapshotWindow() then return end
+    if not util.canSoulburnSwap() then
+        -- Need shards for SBSS
+        if not util.hasAllDots(target) then return end
+        return spell:Cast(target, {
+            debug = "Shard gen for SBSS",
+            category = "attack"
+        })
+    end
+
+    return
+end)
 
 --- Drain Soul (execute filler < 20% HP)
 spells.DrainSoul:Callback("execute", function(spell)

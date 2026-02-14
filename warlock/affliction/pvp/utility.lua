@@ -57,6 +57,12 @@ function util.hasProc()
     if player.buff(auras.LIGHTWEAVE) then return true end
     if player.buff(auras.TRINKET_PROC) then return true end
     if player.buff(auras.LIFEBLOOD) then return true end
+    -- Additional trinket procs (from sims)
+    if player.buff(auras.TRINKET_138963) then return true end
+    if player.buff(auras.TRINKET_138786) then return true end
+    if player.buff(auras.TRINKET_138898) then return true end
+    if player.buff(auras.TRINKET_139133) then return true end
+    if player.buff(auras.TRINKET_137590) then return true end
     return false
 end
 
@@ -79,9 +85,9 @@ function util.canSoulburnSwap()
     return player.soulShards >= 1 and spells.Soulburn.cd == 0 and spells.SoulSwap.cd == 0
 end
 
---- Check if Soul Swap Exhale is ready (DoTs have been inhaled)
-function util.hasSoulSwapExhale()
-    return player.buff(auras.SOUL_SWAP_EXHALE) ~= false
+--- Check if Soul Swap Inhale is active (DoTs have been stored)
+function util.hasSoulSwapInhale()
+    return player.buff(auras.SOUL_SWAP_INHALE) ~= false
 end
 
 -- ============================================================

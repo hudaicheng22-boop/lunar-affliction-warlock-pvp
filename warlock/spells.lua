@@ -204,6 +204,14 @@ lunar.Populate({
     }),
 
     -- ========================================================
+    -- Summons / Cooldowns
+    -- ========================================================
+    SummonDoomguard = lunar.Spell(18540, {
+        beneficial = true,
+        category = "offensive",
+    }),
+
+    -- ========================================================
     -- Pet Abilities (Observer)
     -- ========================================================
     OpticalBlast = lunar.Spell(115781, {
@@ -238,14 +246,22 @@ project.warlock.auras = {
     -- Buffs (on player)
     DARK_SOUL_MISERY     = 113860,
     SOULBURN             = 74434,
-    SOUL_SWAP_EXHALE     = 86213,
-    LIGHTWEAVE           = 125487,   -- Tailoring proc: +580 Int, 15s
-    TRINKET_PROC         = 126706,   -- Malevolent Gladiator's Insignia: +1287 Int, 20s
-    LIFEBLOOD            = 74497,    -- Herbalism: +2880 Haste, 20s
+    SOUL_SWAP_INHALE     = 86211,   -- DoTs have been inhaled (stored)
+    SOUL_SWAP_EXHALE     = 86213,   -- Exhale action spell
+    LIGHTWEAVE           = 126734,  -- Tailoring proc (confirmed by sims)
+    TRINKET_PROC         = 126706,  -- Malevolent Gladiator's Insignia: +1287 Int, 20s
+    LIFEBLOOD            = 74497,   -- Herbalism: +2880 Haste, 20s
     BLOOD_HORROR         = 111397,
     BURNING_RUSH         = 111400,
     SOUL_LINK            = 108415,
     DARK_REGENERATION    = 108359,
+
+    -- Trinket procs (from sims - various tier trinkets)
+    TRINKET_138963       = 138963,
+    TRINKET_138786       = 138786,
+    TRINKET_138898       = 138898,
+    TRINKET_139133       = 139133,
+    TRINKET_137590       = 137590,
 
     -- Debuffs (on target)
     AGONY                = 980,

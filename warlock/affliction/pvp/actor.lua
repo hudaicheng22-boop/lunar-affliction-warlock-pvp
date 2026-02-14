@@ -80,9 +80,10 @@ actor:Init(function()
     spells.BloodHorror("activate")
 
     -- ========================================================
-    -- TIER 3: Burst Cooldown (Dark Soul: Misery)
+    -- TIER 3: Burst Cooldowns
     -- ========================================================
     spells.DarkSoulMisery("with_procs")
+    spells.SummonDoomguard("burst")
 
     -- ========================================================
     -- TIER 4: Snapshot System (Soulburn + Soul Swap)
@@ -147,8 +148,9 @@ actor:Init(function()
     spells.DrainLife("heal")
 
     -- ========================================================
-    -- TIER 12: Filler
+    -- TIER 12: Shard Generation & Filler
     -- ========================================================
+    spells.DrainSoul("shard_gen")   -- Generate shards for SBSS during snapshot window
     spells.DrainSoul("execute")     -- Execute (target < 20%)
     spells.MaleficGrasp("filler")   -- Standard filler
     spells.FelFlame("moving")       -- Moving filler
