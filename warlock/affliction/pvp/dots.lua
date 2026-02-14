@@ -29,38 +29,12 @@ local target = lunar.target
 
 spells.DarkSoulMisery:Callback("burst", function(spell)
     if not util.should() then return end
-
-    local mode = settings.warlock_dark_soul_mode or "auto_burst"
-
-    if mode == "manual" then return end
-
-    local shouldUse = false
-
-    -- Auto Burst mode: intelligent detection + manual toggle
-    if mode == "auto_burst" then
-        -- Manual burst toggle (keybind/command) overrides all
-        if util.isBurstMode() then
-            shouldUse = true
-        end
-        -- Auto-detect ideal burst opportunities
-        if not shouldUse and util.shouldAutoBurst() then
-            util.activateBurst()
-            shouldUse = true
-        end
+    if not target.enemy then return end
+    -- Sim-like usage for stable dummy output:
+    -- use with procs/all dots, or on execute/end-of-fight windows.
+    if not util.hasProc() and not util.hasAllDots(target) and target.hp > 20 then
+        return
     end
-
-    -- With procs mode (legacy)
-    if mode == "with_procs" then
-        if util.hasProc() then shouldUse = true end
-    end
-
-    -- On cooldown mode
-    if mode == "on_cd" then
-        shouldUse = true
-    end
-
-    if not shouldUse then return end
-
     return spell:Cast() and lunar.alert("Dark Soul!", spell.id)
 end)
 
@@ -71,23 +45,11 @@ end)
 spells.SummonDoomguard:Callback("burst", function(spell)
     if not util.should() then return end
     if not target.enemy then return end
-
-    local shouldUse = false
-
-    -- Burst mode: always use Doomguard when Dark Soul is active
-    if util.isBurstMode() and util.hasSnapshotWindow() then
-        shouldUse = true
-    end
-
-    -- Low HP execute
-    if target.hp < 25 and util.hasProc() then shouldUse = true end
-    if target.hp < 20 then shouldUse = true end
-
-    -- Snapshot window with proc (outside burst mode)
-    if util.hasSnapshotWindow() and util.hasProc() then shouldUse = true end
-
-    if not shouldUse then return end
-
+    -- Sim-like windows:
+    -- 1) Dark Soul active
+    -- 2) Execute phase
+    -- 3) Proc window
+    if not util.hasSnapshotWindow() and target.hp > 25 and not util.hasProc() then return end
     return spell:Cast() and lunar.alert("Doomguard!", spell.id)
 end)
 

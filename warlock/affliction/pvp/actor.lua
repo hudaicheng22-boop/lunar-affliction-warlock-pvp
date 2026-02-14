@@ -34,8 +34,9 @@ local actor = lunar.Actor:New({
 
 actor:Init(function()
 
-    -- Stable hotfix mode:
-    -- Keep only core, proven callbacks so rotation can cast reliably.
+    -- Stable Sim mode:
+    -- Focus on dummy throughput first (single-target priority).
+    -- PvP control chain is intentionally disabled for stability.
 
     -- Pet auto-summon (requested feature)
     spells.Soulburn("summon_pet")
@@ -47,12 +48,28 @@ actor:Init(function()
     spells.SacrificialPact("emergency")
     items.Healthstone("emergency")
 
-    -- Core damage engine
+    -- Sim cooldown windows
+    spells.DarkSoulMisery("burst")
+    spells.SummonDoomguard("burst")
+
+    -- Soulburn + Soul Swap snapshot/refresh
+    spells.Soulburn("refresh_snapshot")
+    spells.SoulSwap("soulburn_apply")
+    spells.Soulburn("snapshot")
+    spells.SoulSwap("soulburn_apply")
+    spells.Soulburn("initial")
+    spells.SoulSwap("soulburn_apply")
+    spells.SoulSwap("inhale")
+    spells.SoulSwap("exhale")
+
+    -- Core damage engine (sim-like ST order)
     spells.UnstableAffliction("maintain")
     spells.Agony("maintain")
     spells.Corruption("maintain")
     spells.CurseOfTheElements("maintain")
+    spells.Haunt("snapshot")
     spells.Haunt("maintain")
+    spells.DrainSoul("shard_gen")
     spells.DrainSoul("execute")
     spells.MaleficGrasp("filler")
     spells.FelFlame("moving")
