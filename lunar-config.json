@@ -1,24 +1,26 @@
 {
+  // For local development - specify which scripts to load
+  "local_scripts": ["common", "druid_resto_pvp_mop"],
   "scripts": {
+    // Common utilities loaded by all scripts
     "common": {
       "modules": [
         "init",
-        "gui/init"
+        "util/spells/racials",
+        "gui/init",
+        "gui/tab/offensives",
       ]
+      // No filters = loads for all classes/specs/expansions
     },
-    "warlock_affliction_pvp": {
+    // Druid Restoration for MoP PvP
+    "druid_resto_pvp_mop": {
       "modules": [
-        "warlock/spells",
-        "warlock/affliction/pvp/utility",
-        "warlock/affliction/pvp/dots",
-        "warlock/affliction/pvp/cc",
-        "warlock/affliction/pvp/interrupt",
-        "warlock/affliction/pvp/defensive",
-        "warlock/affliction/pvp/actor"
+        "mop/druid/spells",
+        "mop/druid/resto/spells/heal/lifebloom",
+        "mop/druid/resto/actor"
       ],
-      "class_specs": ["9_1"],
-      "xpac": ["mop"]
+      "class_specs": ["11_4"],  // Druid Restoration
+      "xpac": ["mop"]           // Mists of Pandaria
     }
-  },
-  "local_scripts": ["common", "warlock_affliction_pvp"]
+  }
 }
