@@ -43,7 +43,7 @@ spells.Shadowfury:Callback("initiate", function(spell)
 
     -- Proactive: initiate chain when we have pressure set up
     -- (DOTs on team, ready to capitalize)
-    return spell:SmartAoE(ccTarget, { radius = 8 })
+    return spell:AoECast(ccTarget)
         and lunar.alert("Chain Start: " .. ccTarget.name .. "!", spell.id)
 end)
 
@@ -70,7 +70,7 @@ spells.Shadowfury:Callback("counter", function(spell)
 
     if not enemy then return end
 
-    return spell:SmartAoE(enemy, { radius = 8 })
+    return spell:AoECast(enemy)
         and lunar.alert("Counter SF: " .. enemy.name .. "!", spell.id)
 end)
 
@@ -92,7 +92,7 @@ spells.Shadowfury:Callback("peel", function(spell)
 
     if not meleeEnemy then return end
 
-    return spell:SmartAoE(meleeEnemy, { radius = 8 })
+    return spell:AoECast(meleeEnemy)
         and lunar.alert("Peel SF!", spell.id)
 end)
 
