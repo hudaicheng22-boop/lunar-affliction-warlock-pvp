@@ -312,16 +312,6 @@ function util.shouldAutoBurst()
     return false
 end
 
--- Register burst toggle command (/affliction burst)
-if project.cmd then
-    project.cmd:New(function(msg)
-        if msg == "burst" then
-            util.toggleBurst()
-            return true
-        end
-    end)
-end
-
 -- ============================================================
 -- Melee Pressure Detection
 -- ============================================================
@@ -340,4 +330,14 @@ end
 --- Are we under melee pressure?
 function util.underMeleePressure()
     return util.meleeAttackerCount() >= 1
+end
+
+-- Register burst toggle command (/affliction burst)
+if project.cmd then
+    project.cmd:New(function(msg)
+        if msg == "burst" then
+            util.toggleBurst()
+            return true
+        end
+    end)
 end
