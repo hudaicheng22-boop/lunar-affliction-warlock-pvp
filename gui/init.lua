@@ -104,14 +104,38 @@ burst:Text({ text = "Dark Soul: Misery", header = true })
 
 burst:Dropdown({
     var = "warlock_dark_soul_mode",
-    default = "with_procs",
+    default = "auto_burst",
     options = {
-        { label = lunar.colors.white .. "With Procs", value = "with_procs", tooltip = "Use Dark Soul when trinket/tailoring procs are active for maximum snapshot." },
-        { label = lunar.colors.white .. "On Cooldown", value = "on_cd", tooltip = "Use Dark Soul on cooldown." },
-        { label = lunar.colors.white .. "Manual", value = "manual", tooltip = "Never auto-use Dark Soul." },
+        { label = lunar.colors.green .. "Auto Burst", value = "auto_burst",
+          tooltip = "Intelligent burst system. Automatically triggers Dark Soul when:\n\n" ..
+                    lunar.colors.yellow .. "1.|r Trinket/tailoring proc is active (max snapshot)\n" ..
+                    lunar.colors.yellow .. "2.|r Target HP < 35% (execute pressure)\n" ..
+                    lunar.colors.yellow .. "3.|r Fear Epoch active (healer can't dispel)\n\n" ..
+                    lunar.colors.pink .. "Manual override:|r " .. lunar.colors.white .. "/affliction burst\n" ..
+                    "When burst activates: Dark Soul → Snapshot → Doomguard → Haunt" },
+        { label = lunar.colors.white .. "With Procs", value = "with_procs",
+          tooltip = "Use Dark Soul only when trinket/tailoring procs are active for maximum snapshot." },
+        { label = lunar.colors.white .. "On Cooldown", value = "on_cd",
+          tooltip = "Use Dark Soul on cooldown." },
+        { label = lunar.colors.red .. "Manual Only", value = "manual",
+          tooltip = "Never auto-use Dark Soul.\nUse /affliction burst to manually trigger." },
     },
     placeholder = lunar.colors.white .. "Dark Soul Usage",
     header = lunar.colors.white .. "Dark Soul Mode",
+})
+
+burst:Separator()
+
+burst:Text({ text = "Burst Toggle", header = true })
+
+burst:Text({
+    text = lunar.colors.yellow .. "Command:|r " .. lunar.colors.white ..
+           "/affliction burst" .. lunar.colors.gray ..
+           " — Toggle burst mode on/off\n" ..
+           lunar.colors.yellow .. "Tip:|r " .. lunar.colors.white ..
+           "Bind this command to a keybind for instant burst control.\n" ..
+           "In Auto Burst mode, the system also triggers automatically\n" ..
+           "when it detects optimal conditions (proc + DoTs up)."
 })
 
 -- ============================================================

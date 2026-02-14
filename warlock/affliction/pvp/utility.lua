@@ -225,6 +225,101 @@ function util.findEnemyPetToDot()
 end
 
 -- ============================================================
+-- Burst Mode System
+-- Guide: "Timing > Frequency — the perfect burst destroys;
+-- a wasted burst gives opponents 2 minutes of confidence"
+-- ============================================================
+-- Burst mode triggers the full damage sequence:
+--   1. Dark Soul: Misery (immediate)
+--   2. Soulburn + Soul Swap snapshot
+--   3. Summon Doomguard
+--   4. Aggressive Haunt stacking
+--   5. Auto-expires when Dark Soul fades (~20s)
+-- ============================================================
+
+local burstActive = false
+local burstStartTime = 0
+local BURST_WINDOW = 22  -- Dark Soul duration (20s) + buffer
+
+--- Toggle burst mode on/off (for keybind/command)
+function util.toggleBurst()
+    if burstActive then
+        burstActive = false
+        lunar.alert("Burst OFF")
+    else
+        burstActive = true
+        burstStartTime = lunar.time
+        lunar.alert("BURST ON!", auras.DARK_SOUL_MISERY)
+    end
+end
+
+--- Activate burst mode programmatically (for auto-detection)
+function util.activateBurst()
+    if burstActive then return end
+    burstActive = true
+    burstStartTime = lunar.time
+    lunar.alert("AUTO BURST!", auras.DARK_SOUL_MISERY)
+end
+
+--- Deactivate burst mode
+function util.deactivateBurst()
+    if not burstActive then return end
+    burstActive = false
+end
+
+--- Is burst mode currently active?
+function util.isBurstMode()
+    if not burstActive then return false end
+    -- Auto-expire after burst window
+    if (lunar.time - burstStartTime) > BURST_WINDOW then
+        burstActive = false
+        return false
+    end
+    return true
+end
+
+--- Remaining time in burst mode
+function util.burstRemains()
+    if not burstActive then return 0 end
+    local remains = BURST_WINDOW - (lunar.time - burstStartTime)
+    if remains < 0 then return 0 end
+    return remains
+end
+
+--- Should we auto-trigger burst? (intelligent detection)
+--- Returns true when conditions are ideal for maximum damage
+function util.shouldAutoBurst()
+    if burstActive then return false end  -- Already bursting
+    if spells.DarkSoulMisery.cd > 0 then return false end  -- Dark Soul on CD
+
+    local t = lunar.target
+    if not t.enemy then return false end
+
+    -- Must have DOTs up for burst to multiply existing damage
+    if not util.hasAllDots(t) then return false end
+
+    -- Trigger conditions (any one is enough to burst):
+
+    -- 1. Proc is active → Dark Soul + proc = maximum snapshot
+    if util.hasProc() then return true end
+
+    -- 2. Target low HP → finish with burst
+    if t.hp < 35 then return true end
+
+    -- 3. Fear Epoch → healer can't dispel, maximum pressure window
+    if util.isFearEpoch() then return true end
+
+    return false
+end
+
+-- Register burst toggle command (/affliction burst)
+if project.cmd then
+    project.cmd("burst", function()
+        util.toggleBurst()
+    end)
+end
+
+-- ============================================================
 -- Melee Pressure Detection
 -- ============================================================
 

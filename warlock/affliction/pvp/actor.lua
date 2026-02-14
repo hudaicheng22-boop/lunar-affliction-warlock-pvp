@@ -97,8 +97,10 @@ actor:Init(function()
     -- ========================================================
     -- TIER 4: BURST COOLDOWNS
     -- Guide: "Timing > Frequency"
+    -- Auto Burst: detects proc/low HP/fear epoch and triggers
+    -- Manual Burst: /affliction burst or keybind
     -- ========================================================
-    spells.DarkSoulMisery("with_procs")
+    spells.DarkSoulMisery("burst")
     spells.SummonDoomguard("burst")
 
     -- ========================================================
