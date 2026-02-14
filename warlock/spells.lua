@@ -73,6 +73,11 @@ lunar.Populate({
         category = "attack",
     }),
 
+    SoulSwapExhale = lunar.Spell(86213, {
+        effect = "magic",
+        category = "attack",
+    }),
+
     Soulburn = lunar.Spell(74434, {
         beneficial = true,
         ignoreGCD = true,
@@ -203,6 +208,16 @@ lunar.Populate({
 
     BurningRush = lunar.Spell(111400, {
         beneficial = true,
+    }),
+
+    -- ========================================================
+    -- Profession Abilities
+    -- ========================================================
+    Lifeblood = lunar.Spell(74497, {
+        beneficial = true,
+        ignoreGCD = true,
+        ignoreCasting = true,
+        ignoreChanneling = true,
     }),
 
     -- ========================================================
