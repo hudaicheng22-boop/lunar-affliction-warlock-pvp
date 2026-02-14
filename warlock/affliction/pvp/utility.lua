@@ -314,8 +314,11 @@ end
 
 -- Register burst toggle command (/affliction burst)
 if project.cmd then
-    project.cmd("burst", function()
-        util.toggleBurst()
+    project.cmd:New(function(msg)
+        if msg == "burst" then
+            util.toggleBurst()
+            return true
+        end
     end)
 end
 
