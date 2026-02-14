@@ -130,7 +130,7 @@ burst:Text({ text = "Burst Toggle", header = true })
 
 burst:Text({
     text = lunar.colors.yellow .. "Command:|r " .. lunar.colors.white ..
-           "/affliction burst" .. lunar.colors.gray ..
+           "/affliction burst" ..
            " — Toggle burst mode on/off\n" ..
            lunar.colors.yellow .. "Tip:|r " .. lunar.colors.white ..
            "Bind this command to a keybind for instant burst control.\n" ..
