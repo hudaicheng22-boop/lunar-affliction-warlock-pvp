@@ -2,6 +2,12 @@ local unlocker, lunar, project = ...
 
 -- ============================================================
 -- Affliction Warlock PvP - DoT Management & Snapshot System
+-- Revised per PvP Guide: "Timing > Frequency" philosophy
+-- ============================================================
+-- DOT Priority (PvP):
+--   1. UA (highest - dispel protection, must be seamless)
+--   2. Agony (anti-dispel core, stacking damage)
+--   3. Corruption (shard generation, must maintain)
 -- ============================================================
 
 local spells = project.warlock.spells
@@ -19,7 +25,6 @@ spells.DarkSoulMisery:Callback("with_procs", function(spell)
     if not util.should() then return end
     if settings.warlock_dark_soul_mode == "manual" then return end
 
-    -- "with_procs" mode: only use when a proc is active
     if settings.warlock_dark_soul_mode == "with_procs" then
         if not util.hasProc() then return end
     end
@@ -28,35 +33,68 @@ spells.DarkSoulMisery:Callback("with_procs", function(spell)
 end)
 
 -- ============================================================
--- Soulburn + Soul Swap: Instant DoT Application & Snapshot
+-- Doomguard (DPS Cooldown)
 -- ============================================================
 
---- Soulburn activation (prepares for Soul Swap)
-spells.Soulburn:Callback("snapshot", function(spell)
+spells.SummonDoomguard:Callback("burst", function(spell)
     if not util.should() then return end
-    if not settings.warlock_auto_snapshot then return end
-    if util.hasSoulburn() then return end
-    if not util.canSoulburnSwap() then return end
+    if not target.enemy then return end
 
-    -- Only Soulburn for snapshot when we have strong buffs
-    if not util.hasSnapshotWindow() then return end
+    local shouldUse = false
+    if target.hpliteral < 25 and util.hasProc() then shouldUse = true end
+    if target.hpliteral < 20 then shouldUse = true end
+    if util.hasSnapshotWindow() and util.hasProc() then shouldUse = true end
 
-    return spell:Cast()
+    if not shouldUse then return end
+
+    return spell:Cast() and lunar.alert("Doomguard!", spell.id)
 end)
 
+-- ============================================================
+-- Soulburn + Soul Swap System
+-- Guide: "Soul Swap is a time anchor, not a copy tool"
+-- ============================================================
+
+--- Soulburn for initial DOT application (no DOTs on target)
 spells.Soulburn:Callback("initial", function(spell)
     if not util.should() then return end
     if util.hasSoulburn() then return end
     if not util.canSoulburnSwap() then return end
     if not target.enemy then return end
 
-    -- Initial DoT application: no DoTs on target yet
     if util.hasAllDots(target) then return end
 
     return spell:Cast()
 end)
 
---- Soul Swap: Apply DoTs instantly (when Soulburn is active)
+--- Soulburn for snapshot (Dark Soul + procs active)
+spells.Soulburn:Callback("snapshot", function(spell)
+    if not util.should() then return end
+    if not settings.warlock_auto_snapshot then return end
+    if util.hasSoulburn() then return end
+    if not util.canSoulburnSwap() then return end
+
+    if not util.hasSnapshotWindow() then return end
+
+    return spell:Cast()
+end)
+
+--- Soulburn to refresh before Dark Soul expires
+spells.Soulburn:Callback("refresh_snapshot", function(spell)
+    if not util.should() then return end
+    if not settings.warlock_auto_snapshot then return end
+    if util.hasSoulburn() then return end
+    if not util.canSoulburnSwap() then return end
+    if not target.enemy then return end
+
+    local dsRemains = player.buffRemains(auras.DARK_SOUL_MISERY)
+    if dsRemains <= 0 or dsRemains > 3 then return end
+    if not util.hasAllDots(target) then return end
+
+    return spell:Cast()
+end)
+
+--- Soul Swap: Apply DOTs instantly (Soulburn active)
 spells.SoulSwap:Callback("soulburn_apply", function(spell)
     if not util.should() then return end
     if not util.hasSoulburn() then return end
@@ -66,21 +104,20 @@ spells.SoulSwap:Callback("soulburn_apply", function(spell)
         and lunar.alert("SB+SS!", spell.id)
 end)
 
---- Soul Swap Inhale: Copy DoTs from current target
+--- Soul Swap Inhale: Copy snapshotted DOTs
 spells.SoulSwap:Callback("inhale", function(spell)
     if not util.should() then return end
     if util.hasSoulburn() then return end
     if util.hasSoulSwapInhale() then return end
     if not target.enemy then return end
 
-    -- Only inhale if target has strong snapshotted DoTs
     if not util.hasAllDots(target) then return end
     if not util.hasSnapshotWindow() then return end
 
     return spell:Cast(target, { debug = "Inhale" })
 end)
 
---- Soul Swap Exhale: Spread snapshotted DoTs to other targets
+--- Soul Swap Exhale: Spread to other targets
 spells.SoulSwap:Callback("exhale", function(spell)
     if not util.should() then return end
     if not util.hasSoulSwapInhale() then return end
@@ -89,7 +126,6 @@ spells.SoulSwap:Callback("exhale", function(spell)
     local maxTargets = settings.warlock_max_dot_targets or 3
     if util.dotTargetCount() >= maxTargets then return end
 
-    -- Find an enemy without our DoTs
     local spreadTarget = lunar.enemies.find(function(enemy)
         if enemy.cc or enemy.bcc then return end
         if enemy.isUnit(target) then return end
@@ -104,44 +140,45 @@ spells.SoulSwap:Callback("exhale", function(spell)
 end)
 
 -- ============================================================
--- Soulburn + Soul Swap: Refresh snapshot before Dark Soul expires
+-- Individual DOT Maintenance
+-- Guide Priority: UA (highest) > Agony > Corruption
 -- ============================================================
 
-spells.Soulburn:Callback("refresh_snapshot", function(spell)
-    if not util.should() then return end
-    if not settings.warlock_auto_snapshot then return end
-    if util.hasSoulburn() then return end
-    if not util.canSoulburnSwap() then return end
-    if not target.enemy then return end
-
-    -- Refresh when Dark Soul is about to expire (last 3 seconds)
-    local dsRemains = player.buffRemains(auras.DARK_SOUL_MISERY)
-    if dsRemains <= 0 or dsRemains > 3 then return end
-
-    -- Only if target already has DoTs (we're refreshing, not applying)
-    if not util.hasAllDots(target) then return end
-
-    return spell:Cast() and lunar.debug.offensive("Refresh snapshot (DS expiring)")
-end)
-
--- ============================================================
--- Individual DoT Maintenance (manual fallback)
--- ============================================================
-
---- Agony - Highest priority, must never fall off
---- Sim logic: refresh when remaining <= GCD duration (very tight)
-spells.Agony:Callback("maintain", function(spell)
+--- Unstable Affliction - HIGHEST PRIORITY
+--- Guide: "Must be maintained seamlessly; dispel = 4s silence"
+--- This is the core of dispel protection for Fear chains
+spells.UnstableAffliction:Callback("maintain", function(spell)
     if not util.should() then return end
     if not target.enemy then return end
-    if util.hasSoulSwapInhale() then return end  -- Don't overwrite with weaker dots
+    if util.hasSoulSwapInhale() then return end
 
-    local remains = target.debuffRemains(auras.AGONY, player)
-    if remains > lunar.gcd then return end  -- Tight refresh: only at GCD remaining
+    local remains = target.debuffRemains(auras.UNSTABLE_AFFLICTION, player)
+    local threshold = 3
+    -- Snapshot: refresh earlier when Dark Soul + Lightweave active
+    if util.hasSnapshotWindow() and player.buff(auras.LIGHTWEAVE) then
+        if player.buffRemains(auras.LIGHTWEAVE) < 3 then
+            threshold = 11
+        end
+    end
+    if remains > threshold then return end
 
     return spell:Cast(target)
 end)
 
---- Corruption - Must maintain for Soul Shard generation
+--- Agony - Anti-dispel core, stacking damage
+--- Sim logic: refresh at <= GCD remaining
+spells.Agony:Callback("maintain", function(spell)
+    if not util.should() then return end
+    if not target.enemy then return end
+    if util.hasSoulSwapInhale() then return end
+
+    local remains = target.debuffRemains(auras.AGONY, player)
+    if remains > lunar.gcd then return end
+
+    return spell:Cast(target)
+end)
+
+--- Corruption - Shard generation, must maintain
 --- Sim logic: refresh < 3s, or < 6s during Dark Soul
 spells.Corruption:Callback("maintain", function(spell)
     if not util.should() then return end
@@ -150,77 +187,21 @@ spells.Corruption:Callback("maintain", function(spell)
 
     local remains = target.debuffRemains(auras.CORRUPTION, player)
     local threshold = 3
-    -- Refresh earlier during Dark Soul to lock in snapshot
     if util.hasSnapshotWindow() then threshold = 6 end
     if remains > threshold then return end
 
     return spell:Cast(target)
 end)
 
---- Unstable Affliction - Core damage + dispel protection
---- Sim logic: refresh < 3s, or complex conditions with Dark Soul
-spells.UnstableAffliction:Callback("maintain", function(spell)
-    if not util.should() then return end
-    if not target.enemy then return end
-    if util.hasSoulSwapInhale() then return end
-
-    local remains = target.debuffRemains(auras.UNSTABLE_AFFLICTION, player)
-    local threshold = 3
-    -- During Dark Soul with Lightweave, refresh earlier to snapshot
-    if util.hasSnapshotWindow() and player.buff(auras.LIGHTWEAVE) then
-        if player.buffRemains(auras.LIGHTWEAVE) < 3 then
-            threshold = 11  -- Refresh before Lightweave falls off
-        end
-    end
-    if remains > threshold then return end
-
-    return spell:Cast(target)
-end)
-
 -- ============================================================
--- Multi-DoT Spread (manual, without Soul Swap)
+-- Multi-DoT Spread (Manual)
+-- Guide: "Ideal 3 targets with stacked DOTs"
 -- ============================================================
 
-spells.Agony:Callback("spread", function(spell)
-    if not util.should() then return end
-    if not settings.warlock_multi_dot then return end
-
-    local maxTargets = settings.warlock_max_dot_targets or 3
-    if util.dotTargetCount() >= maxTargets then return end
-
-    local enemy = lunar.enemies.find(function(e)
-        if e.cc or e.bcc then return end
-        if e.isUnit(target) then return end
-        if e.debuff(auras.AGONY, player) then return end
-        return spell:Castable(e)
-    end)
-
-    if not enemy then return end
-    return spell:Cast(enemy)
-end)
-
-spells.Corruption:Callback("spread", function(spell)
-    if not util.should() then return end
-    if not settings.warlock_multi_dot then return end
-
-    local maxTargets = settings.warlock_max_dot_targets or 3
-    if util.dotTargetCount() >= maxTargets then return end
-
-    local enemy = lunar.enemies.find(function(e)
-        if e.cc or e.bcc then return end
-        if e.isUnit(target) then return end
-        if e.debuff(auras.CORRUPTION, player) then return end
-        return spell:Castable(e)
-    end)
-
-    if not enemy then return end
-    return spell:Cast(enemy)
-end)
-
+--- UA spread - ensures dispel protection on multiple targets
 spells.UnstableAffliction:Callback("spread", function(spell)
     if not util.should() then return end
     if not settings.warlock_multi_dot then return end
-
     local maxTargets = settings.warlock_max_dot_targets or 3
     if util.dotTargetCount() >= maxTargets then return end
 
@@ -230,9 +211,57 @@ spells.UnstableAffliction:Callback("spread", function(spell)
         if e.debuff(auras.UNSTABLE_AFFLICTION, player) then return end
         return spell:Castable(e)
     end)
-
     if not enemy then return end
     return spell:Cast(enemy)
+end)
+
+spells.Agony:Callback("spread", function(spell)
+    if not util.should() then return end
+    if not settings.warlock_multi_dot then return end
+    local maxTargets = settings.warlock_max_dot_targets or 3
+    if util.dotTargetCount() >= maxTargets then return end
+
+    local enemy = lunar.enemies.find(function(e)
+        if e.cc or e.bcc then return end
+        if e.isUnit(target) then return end
+        if e.debuff(auras.AGONY, player) then return end
+        return spell:Castable(e)
+    end)
+    if not enemy then return end
+    return spell:Cast(enemy)
+end)
+
+spells.Corruption:Callback("spread", function(spell)
+    if not util.should() then return end
+    if not settings.warlock_multi_dot then return end
+    local maxTargets = settings.warlock_max_dot_targets or 3
+    if util.dotTargetCount() >= maxTargets then return end
+
+    local enemy = lunar.enemies.find(function(e)
+        if e.cc or e.bcc then return end
+        if e.isUnit(target) then return end
+        if e.debuff(auras.CORRUPTION, player) then return end
+        return spell:Castable(e)
+    end)
+    if not enemy then return end
+    return spell:Cast(enemy)
+end)
+
+-- ============================================================
+-- DOT Enemy Pets
+-- Guide: "Applying DOTs to enemy key pets (Water Elemental, 
+-- Ghoul, Hunter pets) weakens enemy overall combat effectiveness"
+-- ============================================================
+
+spells.Corruption:Callback("pet_dot", function(spell)
+    if not util.should() then return end
+    if not settings.warlock_multi_dot then return end
+
+    local pet = util.findEnemyPetToDot()
+    if not pet then return end
+    if not spell:Castable(pet) then return end
+
+    return spell:Cast(pet, { debug = "Pet DoT: " .. pet.name })
 end)
 
 -- ============================================================
@@ -243,7 +272,6 @@ spells.CurseOfTheElements:Callback("maintain", function(spell)
     if not util.should() then return end
     if not settings.warlock_curse_of_elements then return end
     if not target.enemy then return end
-
     if target.debuff(auras.CURSE_OF_ELEMENTS) then return end
 
     return spell:Cast(target)
@@ -258,13 +286,12 @@ spells.CurseOfTheElements:Callback("spread", function(spell)
         if e.debuff(auras.CURSE_OF_ELEMENTS) then return end
         return spell:Castable(e)
     end)
-
     if not enemy then return end
     return spell:Cast(enemy)
 end)
 
 -- ============================================================
--- Haunt
+-- Haunt (+35% damage amplifier)
 -- ============================================================
 
 spells.Haunt:Callback("maintain", function(spell)
@@ -272,7 +299,6 @@ spells.Haunt:Callback("maintain", function(spell)
     if not target.enemy then return end
     if player.soulShards < 1 then return end
 
-    -- Keep Haunt up for +35% damage
     local remains = target.debuffRemains(auras.HAUNT, player)
     if remains > 1 then return end
 
@@ -282,62 +308,29 @@ end)
 spells.Haunt:Callback("snapshot", function(spell)
     if not util.should() then return end
     if not target.enemy then return end
-    if player.soulShards < 2 then return end -- Keep 1 shard reserve
+    if player.soulShards < 2 then return end
 
-    -- Use Haunt during snapshot windows for maximum value
     if not util.hasSnapshotWindow() then return end
 
     return spell:Cast(target, { debug = "Snapshot Haunt" })
 end)
 
 -- ============================================================
--- Filler: Malefic Grasp / Drain Soul
+-- Drain Soul: Shard Generation & Execute
 -- ============================================================
 
--- ============================================================
--- Doomguard (DPS Cooldown)
--- ============================================================
-
-spells.SummonDoomguard:Callback("burst", function(spell)
-    if not util.should() then return end
-    if not target.enemy then return end
-
-    -- Use in execute phase or with Dark Soul + procs
-    local shouldUse = false
-    if target.hpliteral < 25 and util.hasProc() then shouldUse = true end
-    if target.hpliteral < 20 then shouldUse = true end
-    if util.hasSnapshotWindow() and util.hasProc() then shouldUse = true end
-
-    if not shouldUse then return end
-
-    return spell:Cast() and lunar.alert("Doomguard!", spell.id)
-end)
-
--- ============================================================
--- Drain Soul for Shard Generation (from sims)
--- ============================================================
-
---- Drain Soul to generate shards before SBSS window
 spells.DrainSoul:Callback("shard_gen", function(spell)
     if not util.should() then return end
     if not target.enemy then return end
     if player.soulShards >= 3 then return end
 
-    -- Generate shards when we need SBSS and buffs are up
     if not util.hasSnapshotWindow() then return end
-    if not util.canSoulburnSwap() then
-        -- Need shards for SBSS
-        if not util.hasAllDots(target) then return end
-        return spell:Cast(target, {
-            debug = "Shard gen for SBSS",
-            category = "attack"
-        })
-    end
+    if util.canSoulburnSwap() then return end -- Already have shards
+    if not util.hasAllDots(target) then return end
 
-    return
+    return spell:Cast(target, { debug = "Shard gen for SBSS" })
 end)
 
---- Drain Soul (execute filler < 20% HP)
 spells.DrainSoul:Callback("execute", function(spell)
     if not util.should() then return end
     if not target.enemy then return end
@@ -346,7 +339,10 @@ spells.DrainSoul:Callback("execute", function(spell)
     return spell:Cast(target)
 end)
 
---- Malefic Grasp (standard filler)
+-- ============================================================
+-- Filler: Malefic Grasp / Fel Flame
+-- ============================================================
+
 spells.MaleficGrasp:Callback("filler", function(spell)
     if not util.should() then return end
     if not target.enemy then return end
@@ -354,7 +350,6 @@ spells.MaleficGrasp:Callback("filler", function(spell)
     return spell:Cast(target)
 end)
 
---- Fel Flame (instant, while moving)
 spells.FelFlame:Callback("moving", function(spell)
     if not util.should() then return end
     if not target.enemy then return end

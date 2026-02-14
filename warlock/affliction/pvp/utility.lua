@@ -2,6 +2,7 @@ local unlocker, lunar, project = ...
 
 -- ============================================================
 -- Affliction Warlock PvP - Utility Functions
+-- Revised per PvP Guide: "Time Debt Designer" philosophy
 -- ============================================================
 
 local spells = project.warlock.spells
@@ -9,7 +10,6 @@ local auras = project.warlock.auras
 local settings = project.settings
 local player = lunar.player
 
--- Shared utility namespace
 project.warlock.util = {}
 local util = project.warlock.util
 
@@ -17,7 +17,6 @@ local util = project.warlock.util
 -- General Checks
 -- ============================================================
 
---- Should the rotation be active
 function util.should()
     if not player.combat then return end
     if player.dead then return end
@@ -26,15 +25,11 @@ function util.should()
     return true
 end
 
---- Should we stop current cast to do something else
 function util.shouldStopCasting()
-    -- Don't interrupt important channels
     if player.channeling then
         local channelID = player.channelID
-        -- Don't stop Drain Soul (execute filler)
-        if channelID == 1120 then return false end
-        -- Don't stop Drain Life if we're low
-        if channelID == 689 and player.hp < 30 then return false end
+        if channelID == 1120 then return false end -- Drain Soul
+        if channelID == 689 and player.hp < 30 then return false end -- Drain Life emergency
     end
     return true
 end
@@ -43,21 +38,14 @@ end
 -- Snapshot Detection
 -- ============================================================
 
---- Check if we have a strong snapshot window active
---- (Dark Soul + any proc = ideal snapshot moment)
 function util.hasSnapshotWindow()
-    if player.buff(auras.DARK_SOUL_MISERY) then
-        return true
-    end
-    return false
+    return player.buff(auras.DARK_SOUL_MISERY) ~= false
 end
 
---- Check if any significant proc is active (trinket / tailoring / herbalism)
 function util.hasProc()
     if player.buff(auras.LIGHTWEAVE) then return true end
     if player.buff(auras.TRINKET_PROC) then return true end
     if player.buff(auras.LIFEBLOOD) then return true end
-    -- Additional trinket procs (from sims)
     if player.buff(auras.TRINKET_138963) then return true end
     if player.buff(auras.TRINKET_138786) then return true end
     if player.buff(auras.TRINKET_138898) then return true end
@@ -66,7 +54,6 @@ function util.hasProc()
     return false
 end
 
---- Check if we're in the ideal snapshot window (Dark Soul + proc)
 function util.hasIdealSnapshot()
     return util.hasSnapshotWindow() and util.hasProc()
 end
@@ -75,26 +62,22 @@ end
 -- Soulburn + Soul Swap Helpers
 -- ============================================================
 
---- Check if Soulburn is currently active as a buff
 function util.hasSoulburn()
     return player.buff(auras.SOULBURN) ~= false
 end
 
---- Check if we have enough soul shards for Soulburn + Soul Swap
 function util.canSoulburnSwap()
     return player.soulShards >= 1 and spells.Soulburn.cd == 0 and spells.SoulSwap.cd == 0
 end
 
---- Check if Soul Swap Inhale is active (DoTs have been stored)
 function util.hasSoulSwapInhale()
     return player.buff(auras.SOUL_SWAP_INHALE) ~= false
 end
 
 -- ============================================================
--- DoT Tracking Helpers
+-- DoT Tracking
 -- ============================================================
 
---- Check if a target has all 3 core DoTs from us
 function util.hasAllDots(unit)
     if not unit.debuff(auras.AGONY, player) then return false end
     if not unit.debuff(auras.CORRUPTION, player) then return false end
@@ -102,7 +85,6 @@ function util.hasAllDots(unit)
     return true
 end
 
---- Get the lowest DoT remaining time on a target
 function util.lowestDotRemains(unit)
     local agony = unit.debuffRemains(auras.AGONY, player)
     local corr = unit.debuffRemains(auras.CORRUPTION, player)
@@ -110,7 +92,6 @@ function util.lowestDotRemains(unit)
     return math.min(agony, corr, ua)
 end
 
---- Count how many targets have our DoTs
 function util.dotTargetCount()
     local count = 0
     lunar.enemies.loop(function(enemy)
@@ -121,11 +102,103 @@ function util.dotTargetCount()
     return count
 end
 
+--- Check if target has UA (dispel protection for Fear)
+function util.hasUAProtection(unit)
+    return unit.debuff(auras.UNSTABLE_AFFLICTION, player) ~= false
+end
+
+-- ============================================================
+-- Healer Dispel Tracking (Fear Epoch Detection)
+-- Guide: "When healer dispels UA → 8s dispel CD → Fear Epoch begins"
+-- ============================================================
+
+local lastHealerDispelTime = 0
+local DISPEL_CD = 8  -- MoP healer dispel CD is 8 seconds
+
+--- Call this when healer dispels (detected via combat log or aura removal)
+function util.onHealerDispel()
+    lastHealerDispelTime = lunar.time
+end
+
+--- Is the healer's dispel on cooldown? (Fear Epoch active)
+function util.isHealerDispelOnCD()
+    return (lunar.time - lastHealerDispelTime) < DISPEL_CD
+end
+
+--- Time remaining on healer dispel CD
+function util.healerDispelCDRemains()
+    local remains = DISPEL_CD - (lunar.time - lastHealerDispelTime)
+    if remains < 0 then return 0 end
+    return remains
+end
+
+--- Is it Fear Epoch? (healer dispel on CD = safe to spam fear on DPS)
+function util.isFearEpoch()
+    return util.isHealerDispelOnCD()
+end
+
+-- Track dispels via combat log
+lunar.onEvent(function(info, event, source, dest)
+    if event == "SPELL_DISPEL" then
+        local spellID = select(15, unpack(info))
+        -- If our UA was dispelled, healer just used their 8s CD
+        if spellID == auras.UNSTABLE_AFFLICTION then
+            if source and source.enemy and source.healer then
+                util.onHealerDispel()
+            end
+        end
+    end
+end)
+
+-- ============================================================
+-- Fear Chain Tracking
+-- Guide: "3 consecutive fears = 12+ seconds of group suppression"
+-- ============================================================
+
+--- Count enemies currently feared by us
+function util.fearedEnemyCount()
+    local count = 0
+    lunar.enemies.loop(function(enemy)
+        if enemy.feared then
+            count = count + 1
+        end
+    end)
+    return count
+end
+
+--- Find best DPS target to fear (prefers targets with our DOTs ticking)
+function util.findBestFearDPS(spell)
+    return lunar.enemies.score(function(enemy)
+        if not enemy.player then return -1 end
+        if enemy.cc then return -1 end
+        if enemy.healer then return -1 end  -- Healer handled separately
+        if not enemy.ccable({ dr = "FEAR", effect = "magic" }) then return -1 end
+        if not spell:Castable(enemy) then return -1 end
+
+        local score = 0
+
+        -- Strongly prefer targets with our DoTs (DOT damage during fear = max value)
+        if enemy.debuff(auras.AGONY, player) then score = score + 40 end
+        if enemy.debuff(auras.CORRUPTION, player) then score = score + 30 end
+        if enemy.debuff(auras.UNSTABLE_AFFLICTION, player) then score = score + 30 end
+
+        -- Prefer targets in Fear Epoch (healer can't save them)
+        if util.isFearEpoch() then score = score + 50 end
+
+        -- Prefer targets already taking damage (lower HP)
+        score = score + (100 - enemy.hp) * 0.3
+
+        -- Prefer targets with UA protection (dispel = silence)
+        if util.hasUAProtection(enemy) then score = score + 20 end
+
+        return score
+    end)
+end
+
 -- ============================================================
 -- Target Selection
 -- ============================================================
 
---- Find the best target that needs DoTs
 function util.findDotTarget(spell)
     return lunar.enemies.find(function(enemy)
         if enemy.cc then return end
@@ -136,4 +209,36 @@ function util.findDotTarget(spell)
         if not enemy.debuff(auras.UNSTABLE_AFFLICTION, player) then return true end
         return false
     end)
+end
+
+--- Find enemy pets to DoT (Water Elemental, Ghoul, Hunter pets)
+--- Guide: "Applying DOTs to enemy key pets is a hidden win condition"
+function util.findEnemyPetToDot()
+    return lunar.enemyPets.find(function(pet)
+        if pet.dead then return end
+        if pet.hp < 10 then return end  -- About to die anyway
+        if pet.debuff(auras.CORRUPTION, player) then return end  -- Already dotted
+        if pet.distance > 40 then return end
+        return true
+    end)
+end
+
+-- ============================================================
+-- Melee Pressure Detection
+-- ============================================================
+
+--- Count melee attackers on player
+function util.meleeAttackerCount()
+    local count = 0
+    lunar.enemies.loop(function(enemy)
+        if enemy.meleeRange and enemy.player then
+            count = count + 1
+        end
+    end)
+    return count
+end
+
+--- Are we under melee pressure?
+function util.underMeleePressure()
+    return util.meleeAttackerCount() >= 1
 end
