@@ -45,9 +45,9 @@ end
 -- dots-min-time
 local function dotsMinTime(unit)
     return math.min(
-        unit.debuffRemains(AGONY, player),
-        unit.debuffRemains(UA, player),
-        unit.debuffRemains(CORRUPTION, player)
+        unit.debuffRemains(AGONY, player) or 0,
+        unit.debuffRemains(UA, player) or 0,
+        unit.debuffRemains(CORRUPTION, player) or 0
     )
 end
 
@@ -182,7 +182,7 @@ spells.Agony:Callback("maintain", function(spell)
     if player.dead or player.mounted then return end
     if not target.enemy then return end
     if hasInhale() then return end
-    local remains = target.debuffRemains(AGONY, player)
+    local remains = target.debuffRemains(AGONY, player) or 0
     local active = target.debuff(AGONY, player)
     if active and remains > gcdDuration() then return end
     return spell:Cast(target)
@@ -197,10 +197,11 @@ spells.Corruption:Callback("maintain", function(spell)
     if player.dead or player.mounted then return end
     if not target.enemy then return end
     if hasInhale() then return end
-    local remains = target.debuffRemains(CORRUPTION, player)
+    local remains = target.debuffRemains(CORRUPTION, player) or 0
     local active = target.debuff(CORRUPTION, player)
     local targets = enemyCount()
     if targets > 1 then
+        if not active then return spell:Cast(target) end
         if hasDarkSoul() and remains < 6 then return spell:Cast(target) end
         if remains < 3 then return spell:Cast(target) end
     else
@@ -216,13 +217,13 @@ spells.UnstableAffliction:Callback("maintain", function(spell)
     if player.dead or player.mounted then return end
     if not target.enemy then return end
     if hasInhale() then return end
-    local remains = target.debuffRemains(UA, player)
+    local remains = target.debuffRemains(UA, player) or 0
     local active = target.debuff(UA, player)
     if not active then return spell:Cast(target) end
     if remains <= 3 then return spell:Cast(target) end
     -- Sim snapshot: DS active + Lightweave < 3s + UA < 11s + Lightweave active
     if hasDarkSoul() and player.buff(LIGHTWEAVE) then
-        if player.buffRemains(LIGHTWEAVE) < 3 and remains < 11 then
+        if (player.buffRemains(LIGHTWEAVE) or 0) < 3 and remains < 11 then
             return spell:Cast(target)
         end
     end
@@ -238,7 +239,7 @@ spells.UnstableAffliction:Callback("multi", function(spell)
     if enemyCount() <= 1 then return end
     local enemy = lunar.enemies.find(function(e)
         if e.isUnit(target) then return end
-        local r = e.debuffRemains(UA, player)
+        local r = e.debuffRemains(UA, player) or 0
         if r < 3 then return spell:Castable(e) end
     end)
     if not enemy then return end
@@ -255,7 +256,7 @@ spells.DrainSoul:Callback("haunt_shards", function(spell)
     if player.channeling then return end
     if shards() > 0 then return end
     if shouldSwap() then return end
-    local hauntRemains = target.debuffRemains(HAUNT, player)
+    local hauntRemains = target.debuffRemains(HAUNT, player) or 0
     if hauntRemains >= 1 then return end
     if spells.Haunt.flying then return end
     return spell:Cast(target)
@@ -270,8 +271,8 @@ spells.Haunt:Callback("maintain", function(spell)
     if not target.enemy then return end
     if shards() < 1 then return end
     if spells.Haunt.flying then return end
-    local remains = target.debuffRemains(HAUNT, player)
-    local threshold = spell.castTime + 2
+    local remains = target.debuffRemains(HAUNT, player) or 0
+    local threshold = (spell.castTime or 1.5) + 2
     if remains >= threshold then return end
     return spell:Cast(target)
 end)
@@ -299,9 +300,9 @@ spells.SoulSwapExhale:Callback("exhale_urgent", function(spell)
     if not hasInhale() then return end
     if shards() < 1 then return end
     local urgent = false
-    if hasDarkSoul() and player.buffRemains(DARK_SOUL) < 2 then urgent = true end
+    if hasDarkSoul() and (player.buffRemains(DARK_SOUL) or 99) < 2 then urgent = true end
     for _, id in ipairs(TRINKET_PROCS) do
-        if player.buff(id) and player.buffRemains(id) < 2 then urgent = true end
+        if player.buff(id) and (player.buffRemains(id) or 99) < 2 then urgent = true end
     end
     if not urgent then return end
     local exhaleTarget = findExhaleTarget()
