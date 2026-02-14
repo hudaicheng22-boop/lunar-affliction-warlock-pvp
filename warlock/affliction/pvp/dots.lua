@@ -84,6 +84,7 @@ spells.DrainSoul:Callback("execute", function(spell)
     if player.dead or player.mounted then return end
     if not target.enemy then return end
     if target.hp >= 20 then return end
+    if player.channeling then return end
     return spell:Cast(target)
 end)
 
@@ -94,6 +95,7 @@ end)
 spells.MaleficGrasp:Callback("filler", function(spell)
     if player.dead or player.mounted then return end
     if not target.enemy then return end
+    if player.channeling then return end
     return spell:Cast(target)
 end)
 
