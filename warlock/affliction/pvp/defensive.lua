@@ -156,6 +156,38 @@ end)
 project.warlock.items.Healthstone = Healthstone
 
 -- ============================================================
+-- Pet Auto-Summon (Felhunter / Observer)
+-- Guide: "Pet management is the 'second skill rotation'"
+-- Summon Felhunter (691) → becomes Observer with Grimoire of Supremacy
+-- In combat: Soulburn must be active for instant cast
+-- Out of combat: cast normally
+-- ============================================================
+
+spells.SummonFelhunter:Callback("auto_summon", function(spell)
+    if player.dead or player.ghost or player.mounted then return end
+    if not settings.warlock_auto_summon_pet then return end
+
+    local pet = lunar.pet
+    if pet.exists and not pet.dead then return end  -- Pet is alive, no need
+
+    -- In combat: only summon if Soulburn is active (instant cast)
+    if player.combat and not util.hasSoulburn() then return end
+
+    return spell:Cast() and lunar.alert("Summoning Pet!", spell.id)
+end)
+
+-- ============================================================
+-- Unending Resolve — Damage Reduction
+-- ============================================================
+
+spells.UnendingResolve:Callback("damage_reduction", function(spell)
+    if not util.should() then return end
+    if player.hp > 35 then return end
+
+    return spell:Cast() and lunar.alert("Unending Resolve!", spell.id)
+end)
+
+-- ============================================================
 -- Life Tap — Mana Management
 -- ============================================================
 

@@ -41,8 +41,8 @@ spells.SummonDoomguard:Callback("burst", function(spell)
     if not target.enemy then return end
 
     local shouldUse = false
-    if target.hpliteral < 25 and util.hasProc() then shouldUse = true end
-    if target.hpliteral < 20 then shouldUse = true end
+    if target.hp < 25 and util.hasProc() then shouldUse = true end
+    if target.hp < 20 then shouldUse = true end
     if util.hasSnapshotWindow() and util.hasProc() then shouldUse = true end
 
     if not shouldUse then return end
@@ -54,6 +54,20 @@ end)
 -- Soulburn + Soul Swap System
 -- Guide: "Soul Swap is a time anchor, not a copy tool"
 -- ============================================================
+
+--- Soulburn for instant pet re-summon in combat
+spells.Soulburn:Callback("summon_pet", function(spell)
+    if player.dead or player.ghost or player.mounted then return end
+    if not player.combat then return end  -- Don't waste soulburn out of combat
+    if not settings.warlock_auto_summon_pet then return end
+    if util.hasSoulburn() then return end  -- Already have soulburn buff
+    if player.soulShards < 1 then return end
+
+    local pet = lunar.pet
+    if pet.exists and not pet.dead then return end  -- Pet is alive
+
+    return spell:Cast()
+end)
 
 --- Soulburn for initial DOT application (no DOTs on target)
 spells.Soulburn:Callback("initial", function(spell)
@@ -334,7 +348,7 @@ end)
 spells.DrainSoul:Callback("execute", function(spell)
     if not util.should() then return end
     if not target.enemy then return end
-    if target.hpliteral >= 20 then return end
+    if target.hp >= 20 then return end
 
     return spell:Cast(target)
 end)

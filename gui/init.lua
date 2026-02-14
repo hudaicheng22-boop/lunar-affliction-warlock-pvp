@@ -271,6 +271,17 @@ local pet = misc:Tab("Pet")
 pet:Text({ text = "Pet Management", header = true })
 
 pet:Checkbox({
+    text = "Auto Summon Pet",
+    var = "warlock_auto_summon_pet",
+    default = true,
+    tooltip = "Automatically summon your Felhunter/Observer if missing or dead.\n" ..
+              lunar.colors.yellow .. "In combat:|r Uses Soulburn for instant summon (costs 1 Soul Shard).\n" ..
+              lunar.colors.green .. "Out of combat:|r Casts normally."
+})
+
+pet:Separator()
+
+pet:Checkbox({
     text = "Auto Health Funnel",
     var = "warlock_health_funnel",
     default = true,

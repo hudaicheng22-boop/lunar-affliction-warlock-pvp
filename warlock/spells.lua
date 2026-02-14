@@ -211,6 +211,12 @@ lunar.Populate({
         category = "offensive",
     }),
 
+    -- Summon Felhunter (becomes Observer with Grimoire of Supremacy)
+    SummonFelhunter = lunar.Spell(691, {
+        beneficial = true,
+        category = "summon",
+    }),
+
     -- ========================================================
     -- Pet Abilities (Observer)
     -- ========================================================

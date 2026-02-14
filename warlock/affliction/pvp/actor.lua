@@ -35,91 +35,100 @@ local actor = lunar.Actor:New({
 actor:Init(function()
 
     -- ========================================================
-    -- TIER 0: SURVIVAL (off-GCD, don't die)
+    -- TIER 0: PET AUTO-SUMMON (highest priority)
+    -- Guide: "Pet management is the second skill rotation"
+    -- No pet = no interrupt, no Sac Pact, no Soul Link
+    -- ========================================================
+    spells.Soulburn("summon_pet")              -- Soulburn for instant in-combat summon
+    spells.SummonFelhunter("auto_summon")      -- Summon Felhunter/Observer
+
+    -- ========================================================
+    -- TIER 1: SURVIVAL (off-GCD, don't die)
     -- Guide: "Being alive IS the prerequisite for pressure"
     -- ========================================================
     spells.UnboundWill("break_cc")
+    spells.UnendingResolve("damage_reduction")
     spells.DarkRegeneration("emergency")
     spells.SacrificialPact("emergency")
     items.Healthstone("emergency")
     spells.DemonicCircleTeleport("los_break")       -- Break incoming CC via LoS
 
     -- ========================================================
-    -- TIER 1: INTERRUPTS (off-GCD)
+    -- TIER 2: INTERRUPTS (off-GCD)
     -- ========================================================
     spells.OpticalBlast("pvp_interrupt")
     spells.CommandDemon("pvp_interrupt")
 
     -- ========================================================
-    -- TIER 2: CONTROL CHAINS
+    -- TIER 3: CONTROL CHAINS
     -- Guide: "Shadowfury = startup switch for ALL chains"
     -- ========================================================
 
-    -- 2a: Shadowfury initiates — proactive chain start on healer
+    -- 3a: Shadowfury initiates — proactive chain start on healer
     spells.Shadowfury("initiate")
 
-    -- 2b: Shadowfury counter — break enemy CC chains
+    -- 3b: Shadowfury counter — break enemy CC chains
     spells.Shadowfury("counter")
 
-    -- 2c: Fear CC target (healer) — UA-protected
+    -- 3c: Fear CC target (healer) — UA-protected
     spells.Fear("cc_target")
 
-    -- 2d: Fear Epoch — spam fear DPS when healer dispel on CD
+    -- 3d: Fear Epoch — spam fear DPS when healer dispel on CD
     spells.Fear("fear_epoch")
 
-    -- 2e: Howl of Terror offensive — AoE fear during Fear Epoch
+    -- 3e: Howl of Terror offensive — AoE fear during Fear Epoch
     spells.HowlOfTerror("offensive")
 
-    -- 2f: Mortal Coil on CC target (horror DR, separate from fear)
+    -- 3f: Mortal Coil on CC target (horror DR, separate from fear)
     spells.MortalCoil("cc_target")
 
-    -- 2g: Regular fear on DPS (outside epoch, with UA)
+    -- 3g: Regular fear on DPS (outside epoch, with UA)
     spells.Fear("dps")
 
-    -- 2h: Peel abilities (self-defense)
+    -- 3h: Peel abilities (self-defense)
     spells.HowlOfTerror("peel")
     spells.Shadowfury("peel")
     spells.MortalCoil("peel")
     spells.BloodHorror("activate")
 
-    -- 2i: Teleport escape under melee pressure
+    -- 3i: Teleport escape under melee pressure
     spells.DemonicCircleTeleport("escape")
 
     -- ========================================================
-    -- TIER 3: BURST COOLDOWNS
+    -- TIER 4: BURST COOLDOWNS
     -- Guide: "Timing > Frequency"
     -- ========================================================
     spells.DarkSoulMisery("with_procs")
     spells.SummonDoomguard("burst")
 
     -- ========================================================
-    -- TIER 4: SNAPSHOT (Soulburn + Soul Swap)
+    -- TIER 5: SNAPSHOT (Soulburn + Soul Swap)
     -- Guide: "Soul Swap is a time anchor — it doesn't create
     -- damage, it locks damage potential in optimal windows"
     -- ========================================================
 
-    -- 4a: Refresh snapshot before Dark Soul expires
+    -- 5a: Refresh snapshot before Dark Soul expires
     spells.Soulburn("refresh_snapshot")
     spells.SoulSwap("soulburn_apply")
 
-    -- 4b: Snapshot with Dark Soul active
+    -- 5b: Snapshot with Dark Soul active
     spells.Soulburn("snapshot")
     spells.SoulSwap("soulburn_apply")
 
-    -- 4c: Inhale snapshotted DOTs
+    -- 5c: Inhale snapshotted DOTs
     spells.SoulSwap("inhale")
 
-    -- 4d: Exhale to spread
+    -- 5d: Exhale to spread
     spells.SoulSwap("exhale")
 
     -- ========================================================
-    -- TIER 5: INITIAL DOT APPLICATION
+    -- TIER 6: INITIAL DOT APPLICATION
     -- ========================================================
     spells.Soulburn("initial")
     spells.SoulSwap("soulburn_apply")
 
     -- ========================================================
-    -- TIER 6: DOT MAINTENANCE (current target)
+    -- TIER 7: DOT MAINTENANCE (current target)
     -- Guide Priority: UA (highest) > Agony > Corruption
     -- "UA = dispel protection, must be seamless"
     -- ========================================================
@@ -128,26 +137,26 @@ actor:Init(function()
     spells.Corruption("maintain")           -- Shard generation
 
     -- ========================================================
-    -- TIER 7: CURSES
+    -- TIER 8: CURSES
     -- ========================================================
     spells.CurseOfTheElements("maintain")
     spells.CurseOfExhaustion("kite")
 
     -- ========================================================
-    -- TIER 8: HAUNT (+35% damage amplifier)
+    -- TIER 9: HAUNT (+35% damage amplifier)
     -- ========================================================
     spells.Haunt("snapshot")
     spells.Haunt("maintain")
 
     -- ========================================================
-    -- TIER 9: TOTEM STOMPING
+    -- TIER 10: TOTEM STOMPING
     -- Guide: "Grounding Totem and Tremor Totem are priority"
     -- ========================================================
     spells.Corruption("stomp_dot")
     spells.FelFlame("stomp")
 
     -- ========================================================
-    -- TIER 10: DOT SPREAD (multi-target pressure)
+    -- TIER 11: DOT SPREAD (multi-target pressure)
     -- Guide: "Ideal 3 targets with stacked DOTs"
     -- ========================================================
     spells.UnstableAffliction("spread")     -- UA first for dispel protection
@@ -156,21 +165,21 @@ actor:Init(function()
     spells.CurseOfTheElements("spread")
 
     -- ========================================================
-    -- TIER 11: ENEMY PET DOTS
+    -- TIER 12: ENEMY PET DOTS
     -- Guide: "DOTs on enemy pets (Water Elemental, Ghoul,
     -- Hunter pets) weakens enemy overall effectiveness"
     -- ========================================================
     spells.Corruption("pet_dot")
 
     -- ========================================================
-    -- TIER 12: PET & SELF MAINTENANCE
+    -- TIER 13: PET & SELF MAINTENANCE
     -- Guide: "Pet management is the second skill rotation"
     -- ========================================================
     spells.HealthFunnel("pet")
     spells.DrainLife("heal")
 
     -- ========================================================
-    -- TIER 13: SHARD GENERATION & FILLER
+    -- TIER 14: SHARD GENERATION & FILLER
     -- ========================================================
     spells.DrainSoul("shard_gen")
     spells.DrainSoul("execute")
@@ -178,7 +187,7 @@ actor:Init(function()
     spells.FelFlame("moving")
 
     -- ========================================================
-    -- TIER 14: MANA MANAGEMENT
+    -- TIER 15: MANA MANAGEMENT
     -- ========================================================
     spells.LifeTap("mana")
 end)

@@ -18,10 +18,11 @@ local util = project.warlock.util
 -- ============================================================
 
 function util.should()
-    if not player.combat then return end
     if player.dead then return end
     if player.ghost then return end
     if player.mounted then return end
+    -- Allow actions in combat OR when targeting an enemy (for pulling dummies/opening)
+    if not player.combat and not lunar.target.enemy then return end
     return true
 end
 
